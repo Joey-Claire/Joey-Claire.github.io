@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NormalBaker.js</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: #eee; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 320px; background: #252525; padding: 20px; display: flex; flex-direction: column; gap: 15px; border-right: 1px solid #333; overflow-y: auto; flex-shrink: 0; }
+        h1 { margin: 0 0 10px 0; font-size: 1.5rem; color: #00d455; text-transform: uppercase; letter-spacing: 1px; }
+        h2 { margin-top: 0; font-size: 1.1rem; color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 0.85rem; color: #aaa; font-weight: 600; }
+        input[type="file"], input[type="number"], select { background: #333; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; width: 100%; box-sizing: border-box; }
+        .checkbox-group { display: flex; flex-direction: row; align-items: center; gap: 10px; background: #333; padding: 10px; border-radius: 4px; border: 1px solid #444; }
+        button.action-btn { background: #007bff; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
+        button.action-btn:disabled { background: #555; cursor: not-allowed; }
+        button.secondary-btn { background: #444; color: #ccc; border: 1px solid #555; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+        button.secondary-btn:hover { background: #555; color: white; }
+        .status-box { font-size: 0.85em; padding: 8px; border-radius: 4px; background: rgba(0,0,0,0.2); text-align: center; }
+        .status-error { color: #ff6b6b; } .status-success { color: #51cf66; } .status-warn { color: #ffd43b; }
+        .progress-container { width: 100%; background: #333; height: 8px; border-radius: 4px; overflow: hidden; display: none; }
+        .progress-bar { width: 0%; height: 100%; background: #00d455; transition: width 0.1s; }
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; background: #111; }
+        .tabs { display: flex; background: #252525; border-bottom: 1px solid #333; }
+        .tab { padding: 15px 30px; background: transparent; color: #aaa; border: none; cursor: pointer; font-size: 1rem; border-right: 1px solid #333; }
+        .tab:hover { background: #333; color: white; }
+        .tab.active { background: #111; color: #fff; border-bottom: 2px solid #007bff; }
+        .viewport { flex-grow: 1; position: relative; display: none; justify-content: center; align-items: center; overflow: hidden; }
+        .viewport.active { display: flex; }
+        #canvasResult { border: 1px solid #444; background-size: 20px 20px; max-width: 90%; max-height: 90%; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        #container3D { width: 100%; height: 100%; }
+        .overlay-instruction { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; pointer-events: none; font-size: 0.8rem; color: #ccc; user-select: none; }
+        .view-controls { position: absolute; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; }
+        .view-toggle { background: transparent; border: 1px solid #666; color: #eee; padding: 5px 10px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+        .view-toggle.active { background: #007bff; border-color: #007bff; }
+        .view-toggle:hover { background: rgba(255,255,255,0.1); }
+        .view-toggle.active:hover { background: #0056b3; }
+        
+        /* New Styles for the Counter Footer */
+        .sidebar-footer { margin-top: auto; padding-top: 20px; border-top: 1px solid #333; font-size: 0.8rem; color: #666; text-align: center; }
+        .counter-val { color: #00d455; font-weight: bold; margin-left: 5px; }
+    </style>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                "three-mesh-bvh": "https://unpkg.com/three-mesh-bvh@0.7.3/build/index.module.js"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h1 data-i18n="app.name">NormalBaker.js</h1>
+        <h2 data-i18n="ui.title">Baking Controls</h2>
+        
+        <div class="group">
+            <label data-i18n="ui.inputHigh">1. High Poly (.obj)</label>
+            <input type="file" id="inputHigh" accept=".obj">
+        </div>
+
+        <div class="group">
+            <label data-i18n="ui.inputLow">2. Low Poly (.obj)</label>
+            <input type="file" id="inputLow" accept=".obj">
+        </div>
+
+        <div class="group">
+            <label data-i18n="ui.size">Texture Size</label>
+            <select id="settingSize">
+                <option value="512" selected>512 x 512</option>
+                <option value="1024">1024 x 1024</option>
+                <option value="2048">2048 x 2048</option>
+            </select>
+        </div>
+
+        <div class="group">
+            <label data-i18n="ui.maxFront">Max Frontal Distance</label>
+            <input type="number" id="settingMaxFront" value="0.15" step="0.001">
+        </div>
+
+        <div class="group">
+            <label data-i18n="ui.maxRear">Max Rear Distance</label>
+            <input type="number" id="settingMaxRear" value="0.15" step="0.001">
+        </div>
+
+        <div class="checkbox-group">
+            <input type="checkbox" id="settingIgnoreBackface" checked>
+            <label for="settingIgnoreBackface" data-i18n="ui.ignoreBackface">Ignore Backfacing</label>
+        </div>
+
+        <div class="checkbox-group">
+            <input type="checkbox" id="settingSmooth" checked>
+            <div style="display:flex; flex-direction:column;">
+                <label for="settingSmooth" data-i18n="ui.avgNormals">Average Normals (Ray)</label>
+                <span style="font-size:0.7em; color:#888" data-i18n="ui.avgHint">Smoothes ray direction only</span>
+            </div>
+        </div>
+
+        <div class="status-box" id="statusText" data-i18n="status.waiting">Upload models to start.</div>
+        
+        <button id="btnBake" class="action-btn" data-i18n="ui.bake" disabled>Bake Texture</button>
+        
+        <div class="progress-container" id="progressWrap">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <button id="btnDownload" class="action-btn" style="background:#28a745; display:none;" data-i18n="ui.download">Download PNG</button>
+
+        <!-- Guest Counter Added Here -->
+        <div class="sidebar-footer">
+            <span id="busuanzi_container_site_pv" style="display:none">
+                Views: <span id="busuanzi_value_site_pv" class="counter-val">--</span>
+            </span>
+            <span style="margin: 0 5px; color: #444;">|</span>
+            <span id="busuanzi_container_site_uv" style="display:none">
+                Users: <span id="busuanzi_value_site_uv" class="counter-val">--</span>
+            </span>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="tabs">
+            <button class="tab active" data-target="view2D" data-i18n="tab.2d">2D Texture</button>
+            <button class="tab" data-target="view3D" data-i18n="tab.3d">3D Preview</button>
+        </div>
+
+        <!-- 2D Viewport -->
+        <div id="view2D" class="viewport active">
+            <canvas id="canvasResult" width="512" height="512"></canvas>
+        </div>
+
+        <!-- 3D Viewport -->
+        <div id="view3D" class="viewport">
+            <div id="container3D"></div>
+            
+            <div class="view-controls">
+                <button class="view-toggle" id="toggleHigh">
+                    <span style="display:inline-block; width:10px; height:10px; background:red; border-radius:50%;"></span>
+                    <span data-i18n="toggle.high">Show High</span>
+                </button>
+                <button class="view-toggle active" id="toggleLow">
+                    <span style="display:inline-block; width:10px; height:10px; background:#007bff; border-radius:50%;"></span>
+                    <span data-i18n="toggle.low">Show Low</span>
+                </button>
+            </div>
+
+            <div class="overlay-instruction" data-i18n="overlay.instruction">Left Click: Rotate | Right Click: Pan | Scroll: Zoom</div>
+        </div>
+    </div>
+
+    <script type="module" src="main.js"></script>
+    
+    <!-- Guest Counter Script (Vercount - Stable) -->
+    <script async src="//cn.vercount.one/js"></script>
+</body>
+</html>
