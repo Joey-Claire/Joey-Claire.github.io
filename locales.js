@@ -3,6 +3,7 @@ export const messages = {
         // Sidebar
         "app.name": "NormalBaker.js",
         "ui.title": "Baking Controls",
+        "ui.lang": "Language", // New key
         "ui.inputHigh": "1. High Poly (.obj)",
         "ui.inputLow": "2. Low Poly (.obj)",
         "ui.size": "Texture Size",
@@ -38,6 +39,7 @@ export const messages = {
     es: {
         "app.name": "NormalBaker.js",
         "ui.title": "Controles de Bake",
+        "ui.lang": "Idioma",
         "ui.inputHigh": "1. Alta Poligonal (.obj)",
         "ui.inputLow": "2. Baja Poligonal (.obj)",
         "ui.size": "Tamaño de Textura",
@@ -70,6 +72,7 @@ export const messages = {
     ru: {
         "app.name": "NormalBaker.js",
         "ui.title": "Настройки запекания",
+        "ui.lang": "Язык",
         "ui.inputHigh": "1. High Poly (.obj)",
         "ui.inputLow": "2. Low Poly (.obj)",
         "ui.size": "Размер текстуры",
@@ -102,6 +105,7 @@ export const messages = {
     id: {
         "app.name": "NormalBaker.js",
         "ui.title": "Kontrol Baking",
+        "ui.lang": "Bahasa",
         "ui.inputHigh": "1. High Poly (.obj)",
         "ui.inputLow": "2. Low Poly (.obj)",
         "ui.size": "Ukuran Tekstur",
@@ -134,6 +138,7 @@ export const messages = {
     th: {
         "app.name": "NormalBaker.js",
         "ui.title": "การตั้งค่าการอบ (Baking)",
+        "ui.lang": "ภาษา",
         "ui.inputHigh": "1. High Poly (.obj)",
         "ui.inputLow": "2. Low Poly (.obj)",
         "ui.size": "ขนาดพื้นผิว (Texture)",
@@ -166,6 +171,7 @@ export const messages = {
     hi: {
         "app.name": "NormalBaker.js",
         "ui.title": "बेकिंग कंट्रोल्स",
+        "ui.lang": "भाषा",
         "ui.inputHigh": "1. हाई पॉली (.obj)",
         "ui.inputLow": "2. लो पॉली (.obj)",
         "ui.size": "टेक्सचर का आकार",
@@ -197,13 +203,8 @@ export const messages = {
     }
 };
 
-// --- AUTO DETECT LOGIC ---
-
-// 1. Get browser language (e.g., "en-US", "ru-RU", "es")
-const userLang = navigator.language || navigator.userLanguage || 'en';
-
-// 2. Split to get just the code (e.g., "en-US" -> "en")
-const langCode = userLang.split('-')[0];
-
-// 3. Export the detected language if we have it, otherwise fallback to 'en'
-export const currentLocale = messages[langCode] ? langCode : 'en';
+export function detectLanguage() {
+    const userLang = navigator.language || navigator.userLanguage || 'en';
+    const langCode = userLang.toLowerCase().split('-')[0];
+    return messages[langCode] ? langCode : 'en';
+}
