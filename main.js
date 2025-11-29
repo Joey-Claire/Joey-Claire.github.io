@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { messages, currentLocale } from './locales.js';
+import { messages, detectLanguage } from './locales.js';
 import { PreviewRenderer } from './renderer.js';
 import { loadObjFile, bakeNormalMap } from './baker.js';
 
@@ -17,7 +17,8 @@ const ui = {
     viewports: document.querySelectorAll('.viewport'),
     toggleHigh: document.getElementById('toggleHigh'),
     toggleLow: document.getElementById('toggleLow'),
-    settingSize: document.getElementById('settingSize')
+    settingSize: document.getElementById('settingSize'),
+    langSelector: document.getElementById('languageSelector') // NEW
 };
 
 const ctx = ui.canvas.getContext('2d');
@@ -25,19 +26,76 @@ let meshHigh = null;
 let meshLow = null;
 const renderer = new PreviewRenderer('container3D');
 
+// State for Language
+let currentLang = detectLanguage();
+let lastStatusKey = "status.waiting"; // To preserve status meaning across lang switch
+let lastStatusType = "";
+
 // Apply Localization
 function localize() {
-    const msgs = messages[currentLocale];
+    const msgs = messages[currentLang];
+    
+    // Update Static UI
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (msgs[key]) el.textContent = msgs[key];
     });
-    if(msgs["status.waiting"]) updateStatus(msgs["status.waiting"]);
+
+    // Update Status Box using the stored key
+    if (msgs[lastStatusKey]) {
+        // If it's a generic status, translate it. 
+        // If it's an error message containing dynamic text, we might lose the dynamic part on switch,
+        // but this handles the main states correctly.
+        updateStatus(msgs[lastStatusKey], lastStatusType, true); 
+    }
 }
 
-function updateStatus(msg, type) {
+// Populate Dropdown
+function initLanguage() {
+    const supported = Object.keys(messages);
+    
+    // Map codes to readable names (optional, or just use codes)
+    const displayNames = {
+        'en': 'English',
+        'es': 'Español',
+        'ru': 'Русский',
+        'id': 'Bahasa Indonesia',
+        'th': 'ไทย',
+        'hi': 'हिन्दी'
+    };
+
+    supported.forEach(lang => {
+        const opt = document.createElement('option');
+        opt.value = lang;
+        opt.textContent = displayNames[lang] || lang.toUpperCase();
+        if (lang === currentLang) opt.selected = true;
+        ui.langSelector.appendChild(opt);
+    });
+
+    ui.langSelector.addEventListener('change', (e) => {
+        currentLang = e.target.value;
+        localize();
+    });
+}
+
+function updateStatus(msg, type, isLangUpdate = false) {
     ui.status.textContent = msg;
     ui.status.className = 'status-box ' + (type === 'error' ? 'status-error' : type === 'success' ? 'status-success' : type === 'warn' ? 'status-warn' : '');
+    
+    if (!isLangUpdate) {
+        // Find if this message corresponds to a key to save it for language switching
+        const msgs = messages[currentLang];
+        // Reverse lookup the key for this message (simple approach)
+        const foundKey = Object.keys(msgs).find(key => msgs[key] === msg);
+        if (foundKey) {
+            lastStatusKey = foundKey;
+            lastStatusType = type;
+        } else if (type === 'error') {
+            // Keep error generic
+            lastStatusKey = "status.error"; 
+            lastStatusType = "error";
+        }
+    }
 }
 
 // Draw UV Wireframe
@@ -93,7 +151,7 @@ function prepareMeshes() {
         if (meshLow.geometry.attributes.uv) {
             drawUVOverlay(meshLow.geometry);
         } else {
-            updateStatus(messages[currentLocale]["status.noUV"], "warn");
+            updateStatus(messages[currentLang]["status.noUV"], "warn");
         }
         
         // Update 3D renderer
@@ -102,7 +160,7 @@ function prepareMeshes() {
 
     if (meshHigh && meshLow) {
         ui.btnBake.disabled = false;
-        updateStatus(messages[currentLocale]["status.ready"], "success");
+        updateStatus(messages[currentLang]["status.ready"], "success");
     }
 }
 
@@ -149,6 +207,7 @@ function initEvents() {
     ui.inputHigh.addEventListener('change', async () => {
         if (ui.inputHigh.files.length) {
             try {
+                updateStatus(messages[currentLang]["status.loading"]);
                 meshHigh = await loadObjFile(ui.inputHigh.files[0]);
                 prepareMeshes();
             } catch(e) { updateStatus(e, "error"); }
@@ -158,6 +217,7 @@ function initEvents() {
     ui.inputLow.addEventListener('change', async () => {
         if (ui.inputLow.files.length) {
             try {
+                updateStatus(messages[currentLang]["status.loading"]);
                 meshLow = await loadObjFile(ui.inputLow.files[0]);
                 prepareMeshes();
             } catch(e) { updateStatus(e, "error"); }
@@ -172,7 +232,7 @@ function initEvents() {
         ui.btnDownload.style.display = 'none';
 
         try {
-            updateStatus(messages[currentLocale]["status.baking"]);
+            updateStatus(messages[currentLang]["status.baking"]);
 
             // Get Options
             const options = {
@@ -191,7 +251,8 @@ function initEvents() {
             const pixelBuffer = await bakeNormalMap(meshHigh, meshLow, options, (progress) => {
                 const pct = Math.round(progress * 100);
                 ui.progressBar.style.width = pct + "%";
-                updateStatus(`${messages[currentLocale]["status.baking"]} ${pct}%`);
+                // We don't localize the % string here, just the prefix
+                updateStatus(`${messages[currentLang]["status.baking"]} ${pct}%`);
             });
 
             // Put data to canvas
@@ -199,7 +260,7 @@ function initEvents() {
             ctx.putImageData(imgData, 0, 0);
 
             // Finish
-            updateStatus(messages[currentLocale]["status.complete"], "success");
+            updateStatus(messages[currentLang]["status.complete"], "success");
             ui.btnBake.disabled = false;
             ui.btnDownload.style.display = 'block';
 
@@ -214,7 +275,7 @@ function initEvents() {
 
         } catch (e) {
             console.error(e);
-            updateStatus(messages[currentLocale]["status.error"] + e.message, "error");
+            updateStatus(messages[currentLang]["status.error"] + e.message, "error");
             ui.btnBake.disabled = false;
         }
     });
@@ -228,5 +289,6 @@ function initEvents() {
 }
 
 // Run
+initLanguage();
 localize();
 initEvents();
