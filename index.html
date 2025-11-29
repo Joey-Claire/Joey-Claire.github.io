@@ -57,6 +57,14 @@
     <div class="sidebar">
         <h1 data-i18n="app.name">NormalBaker.js</h1>
         <h2 data-i18n="ui.title">Baking Controls</h2>
+
+        <!-- NEW: Manual Language Selector -->
+        <div class="group">
+            <label data-i18n="ui.lang">Language</label>
+            <select id="languageSelector">
+                <!-- Options populated by main.js -->
+            </select>
+        </div>
         
         <div class="group">
             <label data-i18n="ui.inputHigh">1. High Poly (.obj)</label>
@@ -110,7 +118,7 @@
 
         <button id="btnDownload" class="action-btn" style="background:#28a745; display:none;" data-i18n="ui.download">Download PNG</button>
 
-        <!-- Guest Counter Added Here -->
+        <!-- Guest Counter -->
         <div class="sidebar-footer">
             <span id="busuanzi_container_site_pv" style="display:none">
                 Views: <span id="busuanzi_value_site_pv" class="counter-val">--</span>
